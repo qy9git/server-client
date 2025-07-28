@@ -1,0 +1,145 @@
+// Server made for Linux in C
+#include "common.h"
+#include "logger.h"
+
+#define backlog 10
+#define user_max 3
+#define poll_max user_max+1
+
+struct client{
+    struct sockaddr_in6 addr;
+    char priv;//-1 new 0 user 126 moderator 127 administrator
+    unsigned short rs;
+    unsigned short ws;
+    char rb[BLOCK];
+    char wb[BLOCK];
+};
+
+
+int main(void){
+    log_init("./logs");
+    logi("Starting server");
+
+    if(sodium_init()<0) // https://doc.libsodium.org/quickstart
+        ex("failed to initialise the cryptography library libsodium");
+    logd("Initialised libsodium");
+
+    int sfd = socket(AF_INET6, SOCK_STREAM|SOCK_NONBLOCK, 0); // man ipv6 && man 2 socket
+    if(sfd < 0)
+        exp("failed to create server socket");
+    logd("Non blocking IPV6 socket created");
+
+    {
+        int flags=fcntl(sfd,F_GETFD); //man 3 fcntl
+        if(flags<0)
+            exp("failed to get socket flags");
+        if(IPV6_V6ONLY ^ flags)
+            if(fcntl(sfd,F_SETFD,flags|IPV6_V6ONLY)) // man ipv6 && man 3 fcntl
+                exp("failed to set socket flag");
+        logd("Socket is made IPV6 only");
+    }
+    {
+        const struct sockaddr_in6 ADR={// man ipv6
+            .sin6_family=AF_INET6,     // AF_INET6                     sa_family_t
+            .sin6_port=htons(S_PORT),  // port number                  in_port_t
+            .sin6_flowinfo=0,          // IPv6 flow information        uint32_t
+            .sin6_addr=in6addr_any,    // IPv6 address                 struct in6_addr
+            .sin6_scope_id=0           // Scope ID (new in Linux 2.4)  uint32_t
+        };
+        if(bind(sfd,(struct sockaddr*)&ADR,sizeof ADR)) // man 3 bind
+            exp("Failed to bind socket");
+        logd("Socket binded");
+    }
+
+
+    if(listen(sfd,backlog)) // man 3 listen
+        exp("failed to listen on port S_PORT");
+    logd("Started listening on port "NB"%u",S_PORT);
+
+    logi("Server Functional");
+
+
+    struct client usr[user_max];
+    struct pollfd pol[poll_max]={0}; //man 2 poll
+    for(nfds_t i=0;i<user_max;++i)
+        pol[i].fd=-1;
+    pol[user_max].fd=sfd;
+    pol[user_max].events=POLLIN;
+    //main loop
+    for(;;){
+        int poll_ret = poll(pol,poll_max,-1); //man 3 poll
+        if(poll_ret<0){
+            logcp("poll failed, poll should never fail");
+            continue;
+        }
+        {// accepting connections
+            struct sockaddr_in6 addr;
+            socklen_t addrlen=sizeof addr;
+            int cfd = accept(sfd,(struct sockaddr*)&addr,&addrlen);
+            test(addrlen!=sizeof(struct sockaddr_in6) || usr->addr.sin6_family!=AF_INET6){
+                logr("Unexpected address");
+                goto leave_connect;
+            }
+            if(cfd<0){
+                logrp("Failed to accept connection");
+                goto leave_connect;
+            }
+            logd("Accepted incoming connection");
+            for(nfds_t i=0;i<user_max;++i)
+                if(pol[i].fd<0){
+                    pol[i].fd=cfd;
+                    memcpy(usr+i,&addr,sizeof addr);
+                    usr[i].priv=-1;
+                    logd("Registered incoming connection");
+                    goto leave_connect;
+                }
+            close(cfd);
+            logc("reached max poll rate, closed incoming connection");
+            leave_connect:;
+        }
+
+        for(nfds_t i=1;i<poll_max;++i){
+            if(pol[i].revents ^ (POLLIN|POLLOUT)){
+                logr("found %x on a client revents, closing connection".pol[i].revents);
+                //this should never happen
+                //just disconnect the user
+            }
+            if(pol[i].revents & POLLIN)
+                if(!usr[i].rs){
+                    int rs;
+                    if(ioctl(pol[i].fd, FIONREAD, &rs)){
+                        logc("failed to fetch read buffer size");
+                        goto leave_pollin;
+                    }
+                    int ret=read(pol[i].fd,usr[i].rb,rs);
+                    if(ret<0){
+                        logc("failed to read buffer");
+                    }
+                    usr[i].rs=ret;
+                }
+            leave_pollin:
+            if(pol[i].revents & POLLOUT){
+                int ws;
+                if(ioctl(pol[i].fd, TIOCOUTQ, ws)){
+                    logc("failed to fetch write buffer size");
+                    goto leave_pollout;
+                }
+                ws=somesize-ws;
+                write();
+                usr[i].ws-=ws
+            }
+            leave_pollout:
+
+        }
+        //NOTE afte being done with io you should work on task queue, so it always goes: task io task io task io ...
+
+
+    }
+}
+
+#ifndef NDEBUG
+#define range(a,b,c) a<=b && b<=c
+static_assert(range(1024u,S_PORT,65535u), "Out of bound port value");
+static_assert(range(1u,backlog,128u), "Out of bound port backlog");//man 2 listen
+static_assert(range(1u,poll_max,1024u), "Out of bound value for poll_max");//file descriptor limits should be checked
+#endif

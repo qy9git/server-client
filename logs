@@ -1,0 +1,27 @@
+[2025-07-24 13:08:38] [SERVER] Started logging
+[2025-07-24 13:08:38] [INFO] Starting server
+[2025-07-24 13:08:38] [DEBUG] Initialised libsodium
+[2025-07-24 13:08:38] [DEBUG] Non blocking IPV6 socket created
+[2025-07-24 13:08:38] [DEBUG] Socket is made IPV6 only
+[2025-07-24 13:08:38] [DEBUG] Socket binded
+[2025-07-24 13:08:38] [DEBUG] Started listening on port 8076
+[2025-07-24 13:08:38] [INFO] Server Functional
+[2025-07-24 13:08:38] [CRITICAL] Failed to accept connection
+[2025-07-24 13:11:42] [SERVER] Started logging
+[2025-07-24 13:11:42] [INFO] Starting server
+[2025-07-24 13:11:42] [DEBUG] Initialised libsodium
+[2025-07-24 13:11:42] [DEBUG] Non blocking IPV6 socket created
+[2025-07-24 13:11:42] [DEBUG] Socket is made IPV6 only
+[2025-07-24 13:11:42] [DEBUG] Socket binded
+[2025-07-24 13:11:42] [DEBUG] Started listening on port [38;5;208m8076
+[2025-07-24 13:11:42] [INFO] Server Functional
+[2025-07-24 13:11:42] [CRITICAL] Failed to accept connection
+[2025-07-24 13:44:16] [SERVER] Started logging
+[2025-07-24 13:44:16] [INFO] Starting server
+[2025-07-24 13:44:16] [DEBUG] Initialised libsodium
+[2025-07-24 13:44:16] [DEBUG] Non blocking IPV6 socket created
+[2025-07-24 13:44:16] [DEBUG] Socket is made IPV6 only
+[2025-07-24 13:44:16] [DEBUG] Socket binded
+[2025-07-24 13:44:16] [DEBUG] Started listening on port [38;5;208m8076
+[2025-07-24 13:44:16] [INFO] Server Functional
+[2025-07-24 13:44:16] [CRITICAL] Failed to accept connection
