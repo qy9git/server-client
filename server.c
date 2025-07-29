@@ -1,6 +1,7 @@
 // Server made for Linux in C
 #include "common.h"
 #include "logger.h"
+#include <unistd.h>
 
 #define backlog 10
 #define user_max 3
@@ -9,8 +10,8 @@
 struct client{
     struct sockaddr_in6 addr;
     char priv;//-1 new 0 user 126 moderator 127 administrator
-    unsigned short rs;
-    unsigned short ws;
+    int rs;
+    int ws;
     char rb[BLOCK];
     char wb[BLOCK];
 };
@@ -68,11 +69,13 @@ int main(void){
     //main loop
     for(;;){
         int poll_ret = poll(pol,poll_max,-1); //man 3 poll
-        if(poll_ret<0){
+        if(poll_ret<0)
             logcp("poll failed, poll should never fail");
-            continue;
+        if(pol[user_max].revents & ~(POLLIN|POLLOUT)){
+            logc("there's a failure on the server fd "NB"%x",pol[user_max].revents);
+            goto leave_connect;
         }
-        {// accepting connections
+        if(pol[user_max].revents & POLLIN){// accepting connections
             struct sockaddr_in6 addr;
             socklen_t addrlen=sizeof addr;
             int cfd = accept(sfd,(struct sockaddr*)&addr,&addrlen);
@@ -95,41 +98,32 @@ int main(void){
                 }
             close(cfd);
             logc("reached max poll rate, closed incoming connection");
-            leave_connect:;
         }
 
-        for(nfds_t i=1;i<poll_max;++i){
-            if(pol[i].revents ^ (POLLIN|POLLOUT)){
-                logr("found %x on a client revents, closing connection".pol[i].revents);
+        leave_connect:
+        for(nfds_t i=0;i<user_max;++i){
+            if(pol[i].revents & ~(POLLIN|POLLOUT)){
+                logr("found "NBr("%x")" on a client revents, closing connection",pol[i].revents);
                 //this should never happen
                 //just disconnect the user
             }
             if(pol[i].revents & POLLIN)
                 if(!usr[i].rs){
-                    int rs;
-                    if(ioctl(pol[i].fd, FIONREAD, &rs)){
-                        logc("failed to fetch read buffer size");
-                        goto leave_pollin;
-                    }
-                    int ret=read(pol[i].fd,usr[i].rb,rs);
+                    ssize_t ret=read(pol[i].fd,usr[i].rb,BLOCK);
                     if(ret<0){
                         logc("failed to read buffer");
+                        ret=0;
                     }
-                    usr[i].rs=ret;
+                    usr[i].rs=(int)ret;
                 }
-            leave_pollin:
             if(pol[i].revents & POLLOUT){
-                int ws;
-                if(ioctl(pol[i].fd, TIOCOUTQ, ws)){
-                    logc("failed to fetch write buffer size");
-                    goto leave_pollout;
+                ssize_t ret=write(pol[i].fd,usr[i].wb,BLOCK);
+                if(ret<0){
+                    logc("failed to read buffer");
+                    ret=0;
                 }
-                ws=somesize-ws;
-                write();
-                usr[i].ws-=ws
+                usr[i].ws-=(int)ret;
             }
-            leave_pollout:
-
         }
         //NOTE afte being done with io you should work on task queue, so it always goes: task io task io task io ...
 

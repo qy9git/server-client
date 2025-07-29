@@ -8,7 +8,7 @@ all: client server
 client: client.c $(deps) *.h makefile
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(deps) $< -o $@ $(LDLIBS)
 
-server: client.c $(deps) *.h makefile
+server: server.c $(deps) *.h makefile
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(deps) $< -o $@ $(LDLIBS)
 
 clear:
