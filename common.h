@@ -24,6 +24,5 @@
 
 //constants
 #define S_PORT 8076u
-#define BLOCK 5000u
 
 #endif

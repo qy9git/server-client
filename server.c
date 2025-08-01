@@ -6,14 +6,18 @@
 #define backlog 10
 #define user_max 3
 #define poll_max user_max+1
+#define packet_m 5000u //in bytes
+#define packet_h 20u //in bytes
+#define packet_max packet_m+packet_h //in bytes
 
 struct client{
     struct sockaddr_in6 addr;
+    unsigned long long Packet_Counter;
     char priv;//-1 new 0 user 126 moderator 127 administrator
     int rs;
     int ws;
-    char rb[BLOCK];
-    char wb[BLOCK];
+    char rb[packet_m];
+    char wb[packet_m];
 };
 
 
@@ -109,7 +113,7 @@ int main(void){
             }
             if(pol[i].revents & POLLIN)
                 if(!usr[i].rs){
-                    ssize_t ret=read(pol[i].fd,usr[i].rb,BLOCK);
+                    ssize_t ret=read(pol[i].fd,usr[i].rb,packet_max);
                     if(ret<0){
                         logc("failed to read buffer");
                         ret=0;
@@ -117,7 +121,7 @@ int main(void){
                     usr[i].rs=(int)ret;
                 }
             if(pol[i].revents & POLLOUT){
-                ssize_t ret=write(pol[i].fd,usr[i].wb,BLOCK);
+                ssize_t ret=write(pol[i].fd,usr[i].wb,packet_max);
                 if(ret<0){
                     logc("failed to read buffer");
                     ret=0;
@@ -126,8 +130,6 @@ int main(void){
             }
         }
         //NOTE afte being done with io you should work on task queue, so it always goes: task io task io task io ...
-
-
     }
 }
 
