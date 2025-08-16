@@ -1,5 +1,9 @@
 #ifndef COMMON_H
 #define COMMON_H
+
+//feature macros
+#define _GNU_SOURCE
+
 //headers
 #include <string.h>
 #include <assert.h>
@@ -24,5 +28,6 @@
 
 //constants
 #define S_PORT 8076u
+#define auth_bytes 17 //in bytes
 
 #endif

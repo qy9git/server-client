@@ -1,8 +1,6 @@
 // Client in C
 #include "common.h"
 
-#define connect_timeout 15
-
 int main(void){
     log_init("./logs");
     logi("Starting client");
@@ -16,13 +14,16 @@ int main(void){
         exp("failed to create server socket");
     logd("IPV6 socket created");
 
+    reconnect:
     {
         int flags=fcntl(cfd,F_GETFD); //man 3 fcntl
         if(flags<0)
             exp("failed to get socket flags");
         if(IPV6_V6ONLY ^ flags)
-            if(fcntl(cfd,F_SETFD,flags|IPV6_V6ONLY)) // man ipv6 && man 3 fcntl
-                exp("failed to set socket flag");
+            if(fcntl(cfd,F_SETFD,(flags|IPV6_V6ONLY)&~O_NONBLOCK)) // man ipv6 && man 3 fcntl
+                logcp("failed to set socket flag");
+            else
+                logd("Socket is made IPV6 only");
         logd("Socket is made IPV6 only");
     }
     {
@@ -33,10 +34,9 @@ int main(void){
             .sin6_addr=in6addr_loopback, // IPv6 address                 struct in6_addr
             .sin6_scope_id=0             // Scope ID (new in Linux 2.4)  uint32_t
         };
-        while(connect(cfd,(struct sockaddr*)&ADR,sizeof ADR)<0){// man 3 connect
+        while(connect(cfd,(struct sockaddr*)&ADR,sizeof ADR)<0)// man 3 connect
             logrp("Failed to connect to the server");
-            sleep(connect_timeout);
-        }
         logd("Connected to server");
     }
+    write(cfd,"hello from client",auth_bytes);
 }

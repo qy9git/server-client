@@ -1,6 +1,7 @@
 // Server made for Linux in C
 #include "common.h"
-#include "logger.h"
+
+#include <netinet/tcp.h>
 #include <unistd.h>
 
 #define backlog 10
@@ -9,10 +10,10 @@
 #define packet_m 5000u //in bytes
 #define packet_h 20u //in bytes
 #define packet_max packet_m+packet_h //in bytes
+#define TCP_DEFER_ACCEPT_val 20 //in seconds
 
 struct client{
     struct sockaddr_in6 addr;
-    unsigned long long Packet_Counter;
     char priv;//-1 new 0 user 126 moderator 127 administrator
     int rs;
     int ws;
@@ -40,8 +41,16 @@ int main(void){
             exp("failed to get socket flags");
         if(IPV6_V6ONLY ^ flags)
             if(fcntl(sfd,F_SETFD,flags|IPV6_V6ONLY)) // man ipv6 && man 3 fcntl
-                exp("failed to set socket flag");
-        logd("Socket is made IPV6 only");
+                logcp("failed to set socket flag");
+            else
+                logd("Socket is made IPV6 only");
+    }
+    {
+        int sec = TCP_DEFER_ACCEPT_val;
+        if(setsockopt(sfd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &sec, sizeof sec))
+            logcp("failed to activate TCP_DEFER_ACCEPT");
+        else
+            logd("Set option TCP_DEFER_ACCEPT");
     }
     {
         const struct sockaddr_in6 ADR={// man ipv6
@@ -55,7 +64,6 @@ int main(void){
             exp("Failed to bind socket");
         logd("Socket binded");
     }
-
 
     if(listen(sfd,backlog)) // man 3 listen
         exp("failed to listen on port S_PORT");
@@ -82,7 +90,7 @@ int main(void){
         if(pol[user_max].revents & POLLIN){// accepting connections
             struct sockaddr_in6 addr;
             socklen_t addrlen=sizeof addr;
-            int cfd = accept(sfd,(struct sockaddr*)&addr,&addrlen);
+            int cfd = accept4(sfd,(struct sockaddr*)&addr,&addrlen,SOCK_NONBLOCK);
             test(addrlen!=sizeof(struct sockaddr_in6) || usr->addr.sin6_family!=AF_INET6){
                 logr("Unexpected address");
                 goto leave_connect;
@@ -91,6 +99,17 @@ int main(void){
                 logrp("Failed to accept connection");
                 goto leave_connect;
             }
+
+            logd("Checking incoming connection");
+
+            unsigned char auth_buff[auth_bytes+1];
+            ssize_t ret = read(cfd,auth_buff,auth_bytes+1);
+            if(ret != auth_bytes){
+                logr("first read on connection returned "NBr("%zd")" expected %u, dropping connection",ret,auth_bytes);
+                close(cfd);
+                goto leave_connect;
+            }
+
             logd("Accepted incoming connection");
             for(nfds_t i=0;i<user_max;++i)
                 if(pol[i].fd<0){
@@ -139,3 +158,23 @@ static_assert(range(1024u,S_PORT,65535u), "Out of bound port value");
 static_assert(range(1u,backlog,128u), "Out of bound port backlog");//man 2 listen
 static_assert(range(1u,poll_max,1024u), "Out of bound value for poll_max");//file descriptor limits should be checked
 #endif
+/*
+    Sent by Server:
+        PACKET = [0][TID][size][DATA] //New task accept ???
+    Sent by Client:
+        PACKET = [0][TID]         //New task initialise ???
+    Sent by All:
+        PACKET = [PID][SIZE][DATA]      //Existing tasks (This is the wanted design)
+
+ATTACKS:
+    Repeated packet (mitigated by libsodium)
+    Data integrity (mitigated by libsodium)
+    Data secrecy (mitigated by libsodium)
+    Inserting data/removing data (mitigated by libsodium)
+    DOS (Not my problem, unsolvable)
+
+-> [4][0][GETDATA]["xyz clients data please"]
+<- [0][0][GETDATA]["ACK the PID is 123"]
+
+-> [7][123][GETDATA]["ACK the PID is 123"]
+*/
