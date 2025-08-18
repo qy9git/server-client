@@ -2,7 +2,6 @@
 #include "common.h"
 
 #include <netinet/tcp.h>
-#include <unistd.h>
 
 #define backlog 10
 #define user_max 3
@@ -158,7 +157,7 @@ static_assert(range(1024u,S_PORT,65535u), "Out of bound port value");
 static_assert(range(1u,backlog,128u), "Out of bound port backlog");//man 2 listen
 static_assert(range(1u,poll_max,1024u), "Out of bound value for poll_max");//file descriptor limits should be checked
 #endif
-/*
+/* NOTE: packet scheme
     Sent by Server:
         PACKET = [0][TID][size][DATA] //New task accept ???
     Sent by Client:
@@ -177,4 +176,16 @@ ATTACKS:
 <- [0][0][GETDATA]["ACK the PID is 123"]
 
 -> [7][123][GETDATA]["ACK the PID is 123"]
+*/
+
+/* NOTE: AUTH
+
+crypto_auth()
+<- [CLIENT_ID][MAC]
+crypto_auth_verify()
+crypto_auth()
+-> [MAC]
+
+
+
 */
