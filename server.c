@@ -10,7 +10,7 @@
 #define packet_h 20u //in bytes
 #define packet_max packet_m+packet_h //in bytes
 #define TCP_DEFER_ACCEPT_val 20 //in seconds
-
+#define usr_number 10
 struct client{
     struct sockaddr_in6 addr;
     char priv;//-1 new 0 user 126 moderator 127 administrator
@@ -19,11 +19,22 @@ struct client{
     char rb[packet_m];
     char wb[packet_m];
 };
-
+struct usr{
+    unsigned char ckey[crypto_auth_KEYBYTES];
+    unsigned char skey[crypto_auth_KEYBYTES];
+};
 
 int main(void){
     log_init("./logs");
     logi("Starting server");
+
+    struct usr known_users[usr_number];
+    int usrlist_fd=open("./usrlist",O_RDONLY,0);
+    if(usrlist_fd<0)
+        exp("failed to open usrlist");
+    if(read(usrlist_fd,known_users,usr_number*sizeof*known_users)!=usr_number*sizeof*known_users)
+        exp("failed while reading usrlist");
+    logd("loaded user list to memory");
 
     if(sodium_init()<0) // https://doc.libsodium.org/quickstart
         ex("failed to initialise the cryptography library libsodium");

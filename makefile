@@ -3,7 +3,7 @@ CPPFLAGS=-DNDEBUG -DVERBOSE #-DLOGGING
 LDLIBS=-lsodium
 deps=logger.o
 .PHONY: all clear clean
-all: client server compile_flags.txt client_creator
+all: client server compile_flags.txt usr_creator
 
 client: client.c $(deps) *.h makefile
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(deps) $< -o $@ $(LDLIBS)
@@ -15,10 +15,10 @@ compile_flags.txt: makefile
 	printf '%s\n' $(CFLAGS) > ./compile_flags.txt
 
 
-client_creator: client_creator.c makefile
+usr_creator: usr_creator.c makefile
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< -o $@ $(LDLIBS)
 	./$@
 
 clean: clear
 clear:
-	$(RM) *.o client server clientlist clientinfo client_creator
+	$(RM) *.o client server usrlist usrinfo usr_creator
