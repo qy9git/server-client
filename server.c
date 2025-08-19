@@ -19,10 +19,6 @@ struct client{
     char rb[packet_m];
     char wb[packet_m];
 };
-struct usr{
-    unsigned char ckey[crypto_auth_KEYBYTES];
-    unsigned char skey[crypto_auth_KEYBYTES];
-};
 
 int main(void){
     log_init("./logs");
@@ -192,11 +188,15 @@ ATTACKS:
 /* NOTE: AUTH
 
 crypto_auth()
-<- [CLIENT_ID][MAC]
-crypto_auth_verify()
+<- [CLIENT_ID][COUNT][MAC] //8+8+32+tcp bytes
+if COUNT>LAST_COUNT
+if crypto_auth_verify()
+LAST_COUNT=COUNT
+
 crypto_auth()
--> [MAC]
+-> [COUNT][MAC] //8+32+tcp bytes
+if sent COUNT == received COUNT
+if crypto_auth_verify()
 
-
-
+continue
 */

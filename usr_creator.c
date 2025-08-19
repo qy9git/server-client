@@ -1,11 +1,5 @@
-#include <fcntl.h>
-#include <unistd.h>
-#include <sodium.h>
+#include "common.h"
 #define N 10
-struct usr{
-    unsigned char ckey[crypto_auth_KEYBYTES];
-    unsigned char skey[crypto_auth_KEYBYTES];
-};
 int main(void){
     struct usr A[N];
     for(int i=0;i<N;++i){

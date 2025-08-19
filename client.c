@@ -5,6 +5,17 @@ int main(void){
     log_init("./logs");
     logi("Starting client");
 
+    struct usr self;
+    {
+        int usrinfo_fd=open("./usrinfo",O_RDONLY,0);
+        if(usrinfo_fd<0)
+            exp("failed to open usrinfo");
+        if(read(usrinfo_fd,&self,sizeof self)!=sizeof self)
+            exp("failed while reading usrinfo");
+        logd("loaded userinfo");
+        close(usrinfo_fd);
+    }
+
     if(sodium_init()<0) // https://doc.libsodium.org/quickstart
         ex("failed to initialise the cryptography library libsodium");
     logd("Initialised libsodium");
@@ -24,7 +35,6 @@ int main(void){
                 logcp("failed to set socket flag");
             else
                 logd("Socket is made IPV6 only");
-        logd("Socket is made IPV6 only");
     }
     {
         const struct sockaddr_in6 ADR={  // man ipv6

@@ -15,7 +15,7 @@ compile_flags.txt: makefile
 	printf '%s\n' $(CFLAGS) > ./compile_flags.txt
 
 
-usr_creator: usr_creator.c makefile
+usr_creator: usr_creator.c common.h makefile
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< -o $@ $(LDLIBS)
 	./$@
 
