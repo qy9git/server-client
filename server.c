@@ -106,15 +106,15 @@ int main(void){
                 goto leave_connect;
             }
 
-            logd("Checking incoming connection");
-
-            unsigned char auth_buff[auth_bytes+1];
-            ssize_t ret = read(cfd,auth_buff,auth_bytes+1);
-            if(ret != auth_bytes){
-                logr("first read on connection returned "NBr("%zd")" expected %u, dropping connection",ret,auth_bytes);
-                close(cfd);
-                goto leave_connect;
-            }
+            // logd("Checking incoming connection");
+            //
+            // unsigned char auth_buff[auth_bytes+1];
+            // ssize_t ret = read(cfd,auth_buff,auth_bytes+1);
+            // if(ret != auth_bytes){
+            //     logr("first read on connection returned "NBr("%zd")" expected %u, dropping connection",ret,auth_bytes);
+            //     close(cfd);
+            //     goto leave_connect;
+            // }
 
             logd("Accepted incoming connection");
             for(nfds_t i=0;i<user_max;++i)
@@ -164,39 +164,3 @@ static_assert(range(1024u,S_PORT,65535u), "Out of bound port value");
 static_assert(range(1u,backlog,128u), "Out of bound port backlog");//man 2 listen
 static_assert(range(1u,poll_max,1024u), "Out of bound value for poll_max");//file descriptor limits should be checked
 #endif
-/* NOTE: packet scheme
-    Sent by Server:
-        PACKET = [0][TID][size][DATA] //New task accept ???
-    Sent by Client:
-        PACKET = [0][TID]         //New task initialise ???
-    Sent by All:
-        PACKET = [PID][SIZE][DATA]      //Existing tasks (This is the wanted design)
-
-ATTACKS:
-    Repeated packet (mitigated by libsodium)
-    Data integrity (mitigated by libsodium)
-    Data secrecy (mitigated by libsodium)
-    Inserting data/removing data (mitigated by libsodium)
-    DOS (Not my problem, unsolvable)
-
--> [4][0][GETDATA]["xyz clients data please"]
-<- [0][0][GETDATA]["ACK the PID is 123"]
-
--> [7][123][GETDATA]["ACK the PID is 123"]
-*/
-
-/* NOTE: AUTH
-
-crypto_auth()
-<- [CLIENT_ID][COUNT][MAC] //8+8+32+tcp bytes
-if COUNT>LAST_COUNT
-if crypto_auth_verify()
-LAST_COUNT=COUNT
-
-crypto_auth()
--> [COUNT][MAC] //8+32+tcp bytes
-if sent COUNT == received COUNT
-if crypto_auth_verify()
-
-continue
-*/

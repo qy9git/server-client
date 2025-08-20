@@ -29,13 +29,12 @@
 
 //constants
 #define S_PORT 8076u
-#define auth_bytes 17 //in bytes
+#define auth_nonce_bytes 64u //in bytes
 
 //types
 struct usr{
-    unsigned long long COUNT;
-    unsigned char ckey[crypto_auth_KEYBYTES];
-    unsigned char skey[crypto_auth_KEYBYTES];
+    unsigned char ckey[crypto_auth_hmacsha512_KEYBYTES];
+    unsigned char skey[crypto_auth_hmacsha512_KEYBYTES];
 };
 
 #endif
