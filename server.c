@@ -1,8 +1,6 @@
 // Server made for Linux in C
 #include "common.h"
 
-#include <netinet/tcp.h>
-
 #define backlog 10
 #define user_max 3
 #define poll_max user_max+1
@@ -97,12 +95,12 @@ int main(void){
             struct sockaddr_in6 addr;
             socklen_t addrlen=sizeof addr;
             int cfd = accept4(sfd,(struct sockaddr*)&addr,&addrlen,SOCK_NONBLOCK);
-            test(addrlen!=sizeof(struct sockaddr_in6) || usr->addr.sin6_family!=AF_INET6){
-                logr("Unexpected address");
-                goto leave_connect;
-            }
             if(cfd<0){
                 logrp("Failed to accept connection");
+                goto leave_connect;
+            }
+            test(addrlen!=sizeof(struct sockaddr_in6) || usr->addr.sin6_family!=AF_INET6){
+                logr("Unexpected address");
                 goto leave_connect;
             }
 

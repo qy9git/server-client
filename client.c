@@ -1,10 +1,14 @@
 // Client in C
 #include "common.h"
-#include <sys/poll.h>
-#include <unistd.h>
+#include "logger.h"
+#include <sys/socket.h>
 
 #define connection_retry_delay 20 //in seconds (unsigned int)
 #define timeout_for_initial_connection 10000 //in miliseconds (int)
+#define auth_send_timeout 20//in seconds
+#define auth_recv_timeout 20//in seconds
+#define tcp_timeout 20 //in seconds
+
 int main(void){
     log_init("./logs");
     logi("Starting client");
@@ -24,7 +28,7 @@ int main(void){
         ex("failed to initialise the cryptography library libsodium");
     logd("Initialised libsodium");
 
-    int cfd = socket(AF_INET6, SOCK_STREAM, 0); // man ipv6 && man 2 socket
+    const int cfd = socket(AF_INET6, SOCK_STREAM, 0); // man ipv6 && man 2 socket
     if(cfd < 0)
         exp("failed to create server socket");
     logd("IPV6 socket created");
@@ -34,6 +38,7 @@ int main(void){
         exp("failed to get socket flags");
     logd("fetched socket flags");
 
+    //NOTE during auth partial read/write is an error. Blocking IO is expected to transfer all data.
     reconnect:
 
     if(fcntl(cfd,F_SETFD,flags)) // man ipv6 && man 3 fcntl
@@ -42,36 +47,55 @@ int main(void){
         logd("Socket is made IPV6 only");
 
     {
-        const struct sockaddr_in6 ADR={  // man ipv6
+        struct timeval rcv = {auth_recv_timeout,0};//man struct timeval
+        if(setsockopt(cfd, SOL_SOCKET, SO_RCVTIMEO, &rcv, sizeof rcv))
+            logcp("failed to set timer on recv");
+        struct timeval snd = {auth_send_timeout,0};//it also supports miliseconds
+        if(setsockopt(cfd, SOL_SOCKET, SO_SNDTIMEO, &snd, sizeof snd))
+            logcp("failed to set timer on send");
+        int val=1;//boolean
+        if(setsockopt(cfd, IPPROTO_TCP, TCP_NODELAY, &val, sizeof val))
+            logwp("failed to set timer on tcp");
+    }
+
+    {
+        struct sockaddr_in6 A={  // man ipv6
             .sin6_family=AF_INET6,       // AF_INET6                     sa_family_t
             .sin6_port=htons(S_PORT),    // port number                  in_port_t
             .sin6_flowinfo=0,            // IPv6 flow information        uint32_t
             .sin6_addr=in6addr_loopback, // IPv6 address                 struct in6_addr
             .sin6_scope_id=0             // Scope ID (new in Linux 2.4)  uint32_t
         };
-        while(connect(cfd,(struct sockaddr*)&ADR,sizeof ADR)<0){// man 3 connect
-            logrp("Failed to connect to the server");
+        unsigned id=0;//id of the client
+        while(sendto(cfd,&id,sizeof id,MSG_FASTOPEN,(struct sockaddr*)&A,sizeof A)!=sizeof id){
+            logcp("Failed to connect to the server");// man 2 sendto
             sleep(connection_retry_delay);
         }
         logd("Connected to server");
     }
-
-    if(fcntl(cfd,F_SETFD,flags|O_NONBLOCK)) // man ipv6 && man 3 fcntl
-        logcp("failed to set socket flag");
-    else
-        logd("Socket is made IPV6 only");
-
     {
-        struct pollfd S={cfd,POLLOUT|POLLIN,0};
         unsigned char server_nonce[auth_nonce_bytes];
-        int read_progress=0;
-        int write_progress=0;
-        unsigned char client_nonce[auth_nonce_bytes];
-        //TODO get the current time to be sure connecting doesn't last forever
-        for(;;){//loop for the initial connection
-            if(poll(&S,1,timeout_for_initial_connection)<0)
-                logcp("poll error");
+        if(recv(cfd,server_nonce,sizeof server_nonce,MSG_WAITALL)!=sizeof server_nonce){
+            logrp("recv failure during auth");
+            close(cfd);
+            goto reconnect;
+        }
+        unsigned char macANDnonce[crypto_auth_hmacsha512_BYTES+auth_nonce_bytes];
+        crypto_auth_hmacsha512(macANDnonce,server_nonce,sizeof server_nonce,self.ckey);
+        if(write(cfd,macANDnonce,sizeof macANDnonce)!=sizeof macANDnonce){
+            logrp("recv failure during auth");
+            close(cfd);
+            goto reconnect;
+        }
+        unsigned char server_mac[crypto_auth_hmacsha512_BYTES];
+        if(recv(cfd,server_nonce,sizeof server_nonce,MSG_WAITALL)){
+            logrp("recv failure during auth");
+            close(cfd);
+            goto reconnect;
         }
     }
-
 }
+
+
+
+
