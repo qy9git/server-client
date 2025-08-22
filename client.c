@@ -1,7 +1,6 @@
 // Client in C
 #include "common.h"
 #include "logger.h"
-#include <sys/socket.h>
 
 #define connection_retry_delay 20 //in seconds (unsigned int)
 #define timeout_for_initial_connection 10000 //in miliseconds (int)
@@ -57,7 +56,6 @@ int main(void){
         if(setsockopt(cfd, IPPROTO_TCP, TCP_NODELAY, &val, sizeof val))
             logwp("failed to set timer on tcp");
     }
-
     {
         struct sockaddr_in6 A={  // man ipv6
             .sin6_family=AF_INET6,       // AF_INET6                     sa_family_t
@@ -71,7 +69,6 @@ int main(void){
             logcp("Failed to connect to the server");// man 2 sendto
             sleep(connection_retry_delay);
         }
-        logd("Connected to server");
     }
     {
         unsigned char server_nonce[auth_nonce_bytes];
@@ -82,20 +79,23 @@ int main(void){
         }
         unsigned char macANDnonce[crypto_auth_hmacsha512_BYTES+auth_nonce_bytes];
         crypto_auth_hmacsha512(macANDnonce,server_nonce,sizeof server_nonce,self.ckey);
+        randombytes_buf(macANDnonce+crypto_auth_hmacsha512_BYTES,auth_nonce_bytes);
         if(write(cfd,macANDnonce,sizeof macANDnonce)!=sizeof macANDnonce){
             logrp("recv failure during auth");
             close(cfd);
             goto reconnect;
         }
         unsigned char server_mac[crypto_auth_hmacsha512_BYTES];
-        if(recv(cfd,server_nonce,sizeof server_nonce,MSG_WAITALL)){
+        if(recv(cfd,server_nonce,sizeof server_nonce,MSG_WAITALL)!=sizeof server_mac){
             logrp("recv failure during auth");
             close(cfd);
             goto reconnect;
         }
+        if(crypto_auth_hmacsha512256_verify(server_mac,macANDnonce+crypto_auth_hmacsha512_BYTES,auth_nonce_bytes,self.skey)){
+            logrp("Server mac verification failure");
+            close(cfd);
+            goto reconnect;
+        }
+        logd("successfully connected and authentificated with the server");
     }
 }
-
-
-
-
