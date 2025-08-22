@@ -1,6 +1,5 @@
 // Client in C
 #include "common.h"
-#include "logger.h"
 
 #define connection_retry_delay 20 //in seconds (unsigned int)
 #define timeout_for_initial_connection 10000 //in miliseconds (int)
@@ -11,6 +10,11 @@
 int main(void){
     log_init("./logs");
     logi("Starting client");
+
+    {//WARNING to work on
+        struct sigaction sa = {.sa_handler = SIG_IGN};
+        sigaction(SIGPIPE,&sa,NULL);
+    }
 
     struct usr self;
     {
@@ -81,7 +85,7 @@ int main(void){
         crypto_auth_hmacsha512(macANDnonce,server_nonce,sizeof server_nonce,self.ckey);
         randombytes_buf(macANDnonce+crypto_auth_hmacsha512_BYTES,auth_nonce_bytes);
         if(write(cfd,macANDnonce,sizeof macANDnonce)!=sizeof macANDnonce){
-            logrp("recv failure during auth");
+            logrp("write failure during auth");
             close(cfd);
             goto reconnect;
         }

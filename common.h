@@ -7,16 +7,16 @@
 //headers
 #include <string.h>
 #include <assert.h>
-
+#include <time.h>
 #include <unistd.h>
+#include <signal.h>
 #include <fcntl.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <arpa/inet.h>
 #include <poll.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
-#include <time.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <arpa/inet.h>
 
 #include <sodium.h>
 
