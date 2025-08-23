@@ -34,6 +34,12 @@ int main(void){
         ex("failed to initialise the cryptography library libsodium");
     logd("Initialised libsodium");
 
+    {
+        struct sigaction sa = {.sa_handler = SIG_IGN};
+        if(sigaction(SIGPIPE,&sa,NULL))
+            exp("Unable to ignore SIGPIPE");
+    }
+
     int sfd = socket(AF_INET6, SOCK_STREAM|SOCK_NONBLOCK, 0); // man ipv6 && man 2 socket
     if(sfd < 0)
         exp("failed to create server socket");

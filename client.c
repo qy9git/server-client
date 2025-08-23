@@ -11,11 +11,6 @@ int main(void){
     log_init("./logs");
     logi("Starting client");
 
-    {//WARNING to work on
-        struct sigaction sa = {.sa_handler = SIG_IGN};
-        sigaction(SIGPIPE,&sa,NULL);
-    }
-
     struct usr self;
     {
         int usrinfo_fd=open("./usrinfo",O_RDONLY,0);
@@ -30,6 +25,12 @@ int main(void){
     if(sodium_init()<0) // https://doc.libsodium.org/quickstart
         ex("failed to initialise the cryptography library libsodium");
     logd("Initialised libsodium");
+
+    {
+        struct sigaction sa = {.sa_handler = SIG_IGN};
+        if(sigaction(SIGPIPE,&sa,NULL))
+            exp("Unable to ignore SIGPIPE");
+    }
 
     const int cfd = socket(AF_INET6, SOCK_STREAM, 0); // man ipv6 && man 2 socket
     if(cfd < 0)
