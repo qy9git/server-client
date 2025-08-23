@@ -22,11 +22,6 @@
 
 //debug
 #include "logger.h"
-#ifdef NDEBUG
-#define test(x) if(x)
-#else
-#define test(x) if(0)
-#endif
 
 //constants
 #define S_PORT 8076u

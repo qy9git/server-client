@@ -42,7 +42,7 @@ int main(void){
         exp("failed to get socket flags");
     logd("fetched socket flags");
 
-    //NOTE during auth partial read/write is an error. Blocking IO is expected to transfer all data.
+    //NOTE during auth a partial read/write is considered as an error. Blocking IO is expected to deliver all data.
     reconnect:
 
     if(fcntl(cfd,F_SETFD,flags)) // man ipv6 && man 3 fcntl

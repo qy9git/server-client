@@ -63,7 +63,7 @@ int main(void){
             logd("Set option TCP_DEFER_ACCEPT");
     }
     {
-        const struct sockaddr_in6 ADR={// man ipv6
+        struct sockaddr_in6 ADR={// man ipv6
             .sin6_family=AF_INET6,     // AF_INET6                     sa_family_t
             .sin6_port=htons(S_PORT),  // port number                  in_port_t
             .sin6_flowinfo=0,          // IPv6 flow information        uint32_t
@@ -103,10 +103,6 @@ int main(void){
             int cfd = accept4(sfd,(struct sockaddr*)&addr,&addrlen,SOCK_NONBLOCK);
             if(cfd<0){
                 logrp("Failed to accept connection");
-                goto leave_connect;
-            }
-            test(addrlen!=sizeof(struct sockaddr_in6) || usr->addr.sin6_family!=AF_INET6){
-                logr("Unexpected address");
                 goto leave_connect;
             }
 
