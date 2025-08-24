@@ -26,7 +26,7 @@ int main(void){
     logd("Initialised libsodium");
 
     {
-        struct sigaction sa={.sa_handler = SIG_IGN}; //man 2 sigaction
+        struct sigaction sa={.sa_handler=SIG_IGN}; //man 2 sigaction
         if(sigaction(SIGPIPE,&sa,NULL))
             exp("Unable to ignore SIGPIPE");
     }
@@ -35,33 +35,44 @@ int main(void){
     reconnect:;//TODO this is ugly with the ;
 
     const int cfd=socket(AF_INET6, SOCK_STREAM, 0); //man ipv6 && man 2 socket
-    if(cfd<0)
+    if(cfd<0){
         logcp("failed to create server socket");
+        goto reconnect;
+    }
     logd("IPV6 socket created");
-
-    const int flags=fcntl(cfd,F_GETFD)|IPV6_V6ONLY; //man 3 fcntl
-    if(flags<0)
-        exp("failed to get socket flags");//BUG there's an issue where close(cfd) closes it completly, get flags cannot be done with exp
-    logd("fetched socket flags");
-
-    if(fcntl(cfd,F_SETFD,flags)) // man ipv6 && man 3 fcntl
-        logrp("failed to set socket flags");
-    else
-        logd("Socket is made IPV6 only");
 
     {
         struct timeval rcv={auth_recv_timeout,0};//man struct timeval (also supports milisecond)
-        if(setsockopt(cfd, SOL_SOCKET, SO_RCVTIMEO, &rcv, sizeof rcv))
-            logcp("failed to set timer on recv");
+        if(setsockopt(cfd, SOL_SOCKET, SO_RCVTIMEO, &rcv, sizeof rcv)){ //man 7 socket
+            logcp("failed to set timeout on recv");
+            goto reconnect;
+        }
+        logd("set timeout on recv");
+
         struct timeval snd={auth_send_timeout,0};
-        if(setsockopt(cfd, SOL_SOCKET, SO_SNDTIMEO, &snd, sizeof snd))
-            logcp("failed to set timer on send");
-        int val=1;//boolean
-        if(setsockopt(cfd, IPPROTO_TCP, TCP_NODELAY, &val, sizeof val))
-            logwp("failed to set tcp nodelay");
+        if(setsockopt(cfd, SOL_SOCKET, SO_SNDTIMEO, &snd, sizeof snd)){ //man 7 socket
+            logcp("failed to set timeout on send");
+            goto reconnect;
+        }
+        logd("set timeout on send");
+
+        int ipv6_only=1;
+        if(setsockopt(cfd, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6_only, sizeof ipv6_only)) //man ipv6
+            logwp("failed to option set IPv6 only");
+        else
+            logd("set option IPv6 only");
+
+        int tcp_nodelay=1;
+        if(setsockopt(cfd, IPPROTO_TCP, TCP_NODELAY, &tcp_nodelay, sizeof tcp_nodelay)) //man tcp
+            logwp("failed to set option tcp nodelay");
+        else
+            logd("set option tcp nodelay");
+
         unsigned ms=tcp_timeout;
-        if(setsockopt(cfd, IPPROTO_TCP, TCP_USER_TIMEOUT, &ms, sizeof ms))
+        if(setsockopt(cfd, IPPROTO_TCP, TCP_USER_TIMEOUT, &ms, sizeof ms)) //man tcp
             logwp("failed to set timeout on tcp");
+        else
+            logd("set timeout on tcp");
     }
     {
         struct sockaddr_in6 A={  // man ipv6
