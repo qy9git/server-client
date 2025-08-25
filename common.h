@@ -3,13 +3,14 @@
 
 //feature macros
 #define _GNU_SOURCE
+//TODO investigate feature test macros
 
 //headers
-#include <string.h>
+#include <string.h> // IWYU pragma: export
 #include <assert.h>
-#include <time.h>
+#include <time.h> // IWYU pragma: export
 #include <unistd.h>
-#include <signal.h>
+#include <signal.h> // IWYU pragma: export
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/socket.h>
@@ -21,7 +22,7 @@
 #include <sodium.h>
 
 //debug
-#include "logger.h"
+#include "logger.h" // IWYU pragma: export
 
 //constants
 #define S_PORT 8076u

@@ -1,6 +1,7 @@
 // Server made for Linux in C
 #include "common.h"
 
+#define tcp_timeout 20000u //in miliseconds (unsigned int)
 #define backlog 10
 #define user_max 3
 #define poll_max user_max+1
@@ -35,32 +36,34 @@ int main(void){
     logd("Initialised libsodium");
 
     {
-        struct sigaction sa = {.sa_handler = SIG_IGN};
+        struct sigaction sa={.sa_handler=SIG_IGN};
         if(sigaction(SIGPIPE,&sa,NULL))
             exp("Unable to ignore SIGPIPE");
     }
 
-    int sfd = socket(AF_INET6, SOCK_STREAM|SOCK_NONBLOCK, 0); // man ipv6 && man 2 socket
-    if(sfd < 0)
+    int sfd=socket(AF_INET6, SOCK_STREAM|SOCK_NONBLOCK, 0); // man ipv6 && man 2 socket
+    if(sfd<0)
         exp("failed to create server socket");
     logd("Non blocking IPV6 socket created");
 
     {
-        int flags=fcntl(sfd,F_GETFD); //man 3 fcntl
-        if(flags<0)
-            exp("failed to get socket flags");
-        if(IPV6_V6ONLY ^ flags)
-            if(fcntl(sfd,F_SETFD,flags|IPV6_V6ONLY)) // man ipv6 && man 3 fcntl
-                logcp("failed to set socket flag");
-            else
-                logd("Socket is made IPV6 only");
-    }
-    {
+        int ipv6_only=1;
+        if(setsockopt(sfd, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6_only, sizeof ipv6_only)) //man ipv6
+            logwp("failed to option set IPv6 only");
+        else
+            logd("set option IPv6 only");
+
         int sec = TCP_DEFER_ACCEPT_val;
         if(setsockopt(sfd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &sec, sizeof sec))
             logcp("failed to activate TCP_DEFER_ACCEPT");
         else
             logd("Set option TCP_DEFER_ACCEPT");
+
+        unsigned ms=tcp_timeout;
+        if(setsockopt(sfd, IPPROTO_TCP, TCP_USER_TIMEOUT, &ms, sizeof ms)) //man tcp
+            logcp("failed to set timeout on tcp");
+        else
+            logd("set timeout on tcp");
     }
     {
         struct sockaddr_in6 ADR={// man ipv6
@@ -100,21 +103,13 @@ int main(void){
         if(pol[user_max].revents & POLLIN){// accepting connections
             struct sockaddr_in6 addr;
             socklen_t addrlen=sizeof addr;
-            int cfd = accept4(sfd,(struct sockaddr*)&addr,&addrlen,SOCK_NONBLOCK);
+            int cfd=accept(sfd,(struct sockaddr*)&addr,&addrlen);
             if(cfd<0){
                 logrp("Failed to accept connection");
                 goto leave_connect;
             }
 
-            // logd("Checking incoming connection");
-            //
-            // unsigned char auth_buff[auth_bytes+1];
-            // ssize_t ret = read(cfd,auth_buff,auth_bytes+1);
-            // if(ret != auth_bytes){
-            //     logr("first read on connection returned "NBr("%zd")" expected %u, dropping connection",ret,auth_bytes);
-            //     close(cfd);
-            //     goto leave_connect;
-            // }
+            //TODO Proceed with a similar auth to client.c
 
             logd("Accepted incoming connection");
             for(nfds_t i=0;i<user_max;++i)
